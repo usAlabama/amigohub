@@ -1,4 +1,3 @@
-<!-- ФАЙЛ 1: index.html (Amigo Hub) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,9 +14,9 @@
             --nav-border: #1f242c;
             --text-muted: #576575;
             --accent: #2962ff;
-            /* Убрали 100dvh. Ставим fallback на 100vh, а точный размер задаст JS */
+            
+            /* Дефолтная высота. JS жестко перезапишет ее в пикселях */
             --app-height: 100vh; 
-            /* Safe area for iOS bottom bar */
             --safe-bottom: env(safe-area-inset-bottom, 0px);
             --nav-height: calc(48px + var(--safe-bottom));
         }
@@ -28,21 +27,27 @@
             background-color: var(--nav-bg) !important;
             color: #fff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            
+            /* Жестко фиксируем габариты, чтобы клава не могла сжать body */
             height: var(--app-height);
+            min-height: var(--app-height);
+            max-height: var(--app-height);
             width: 100vw;
             overflow: hidden;
             position: fixed;
-            overscroll-behavior: none; /* Prevents pull-to-refresh bounce */
+            top: 0;
+            left: 0;
+            overscroll-behavior: none;
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Изолированный контейнер для iframe */
         .window-container {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            bottom: var(--nav-height);
+            /* Вычисляем жесткую высоту сверху вниз, без привязки к bottom */
+            height: calc(var(--app-height) - var(--nav-height));
             background-color: var(--bg-color);
             overflow: hidden;
             z-index: 1;
@@ -67,10 +72,11 @@
             z-index: 2;
         }
 
-        /* Современная ультра-тонкая навигация */
         nav {
             position: absolute;
-            bottom: 0;
+            /* ВАЖНО: Привязываем навигацию к ВЕРХУ документа. 
+               Так клава не сможет вытолкнуть её наверх, она просто перекроет её */
+            top: calc(var(--app-height) - var(--nav-height));
             left: 0;
             right: 0;
             height: var(--nav-height);
@@ -130,7 +136,6 @@
 <body>
 
     <div class="window-container">
-        <!-- Sandboxed iframes для безопасности и независимости. Упадет один - другие работают. -->
         <iframe id="win-crypto" class="active" 
                 sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
                 loading="lazy"></iframe>
@@ -138,13 +143,6 @@
         <iframe id="win-note" 
                 sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
                 loading="lazy"></iframe>
-        
-        <!-- Задел под 3-й модуль -->
-        <!--
-        <iframe id="win-tools" 
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
-                loading="lazy"></iframe>
-        -->
     </div>
 
     <nav>
@@ -153,14 +151,6 @@
             <span id="text-crypto">Terminal</span>
         </button>
 
-        <!-- Задел под 3-ю кнопку в центре (Инструменты / Портфолио / Новости) -->
-        <!--
-        <button id="btn-tools" class="nav-tab" onclick="switchWindow('tools', this)">
-            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
-            <span id="text-tools">Tools</span>
-        </button>
-        -->
-
         <button id="btn-note" class="nav-tab" onclick="switchWindow('note', this)">
             <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
             <span id="text-note">Notepad</span>
@@ -168,91 +158,68 @@
     </nav>
 
     <script>
-        // ЛЕГКАЯ ЗАМЕНА ХОСТИНГА (Netlify -> Github Pages и т.д.)
         const APP_URLS = {
             crypto: "https://usalabama.github.io/amigocryptoterninal/",
-            note: "https://usalabama.github.io/amigo-note/",
-            // tools: "https://amigo-tools.netlify.app" // Для будущей 3-й кнопки
+            note: "https://usalabama.github.io/amigo-note/"
         };
 
-        // Инициализация Telegram WebApp
-		let tg = null;
-		let userLang = 'en';
+        let tg = null;
+        let userLang = 'en';
 
-		// Функция жесткой фиксации высоты
-		const fixAppHeight = () => {
-			// Используем стабильную высоту от ТГ (без учета клавиатуры) или окно браузера как фоллбэк
-			const height = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
-			document.documentElement.style.setProperty('--app-height', `${height}px`);
-		};
+        if (window.Telegram && window.Telegram.WebApp) {
+            tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            tg.setHeaderColor('#0c1017');
+            tg.setBackgroundColor('#0c1017');
+            if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); 
+            
+            if (tg.initDataUnsafe?.user?.language_code) {
+                userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
+            }
+        }
 
-		if (window.Telegram && window.Telegram.WebApp) {
-			tg = window.Telegram.WebApp;
-			tg.ready();
-			tg.expand();
-			tg.setHeaderColor('#0c1017');
-			tg.setBackgroundColor('#0c1017');
-			
-			// Trend 2026: предотвращение случайных закрытий свайпом (если метод поддерживается)
-			if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); 
-			
-			if (tg.initDataUnsafe?.user?.language_code) {
-				userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
-			}
+        // Ключевой фикс: Замораживаем высоту ровно один раз после развертывания окна
+        // и больше НИКОГДА её не меняем. Никаких слушателей ресайза.
+        function freezeAppLayout() {
+            setTimeout(() => {
+                // Берем реальную высоту устройства до появления клавиатуры
+                const fixedHeight = window.innerHeight;
+                document.documentElement.style.setProperty('--app-height', `${fixedHeight}px`);
+            }, 300); // Небольшая задержка, чтобы tg.expand() успел отработать
+        }
 
-			// Слушаем изменение вьюпорта от ТГ и фиксируем высоту
-			tg.onEvent('viewportChanged', fixAppHeight);
-		} else {
-			// Фоллбэк для браузера: игнорируем резкие скачки высоты (открытие клавиатуры)
-			let initHeight = window.innerHeight;
-			window.addEventListener('resize', () => {
-				if (Math.abs(window.innerHeight - initHeight) > 150) return; // Клава выехала - игнорим
-				initHeight = window.innerHeight;
-				fixAppHeight();
-			});
-		}
-
-		// Применяем высоту при старте
-		fixAppHeight();
-
-        // Продвинутая система локализации
         const i18n = {
-            uk: { crypto: "Термінал", note: "Блокнот", tools: "Сервіси" },
-            ru: { crypto: "Терминал", note: "Блокнот", tools: "Сервисы" },
-            en: { crypto: "Terminal", note: "Notepad", tools: "Tools" }
+            uk: { crypto: "Термінал", note: "Блокнот" },
+            ru: { crypto: "Терминал", note: "Блокнот" },
+            en: { crypto: "Terminal", note: "Notepad" }
         };
 
         const t = i18n[userLang] || i18n['en'];
 
-        // Загрузка источников и текста
         window.addEventListener('DOMContentLoaded', () => {
+            // Блокируем верстку
+            freezeAppLayout();
+
             document.getElementById('text-crypto').innerText = t.crypto;
             document.getElementById('text-note').innerText = t.note;
-            // if(document.getElementById('text-tools')) document.getElementById('text-tools').innerText = t.tools;
 
-            // Отложенная загрузка для ускорения первичного рендера Hub'а
             document.getElementById('win-crypto').src = APP_URLS.crypto;
             setTimeout(() => {
                 document.getElementById('win-note').src = APP_URLS.note;
-                // document.getElementById('win-tools').src = APP_URLS.tools;
             }, 500);
         });
 
-        // Логика переключения с оптимизацией DOM
         function switchWindow(windowId, btn) {
-            // Если кнопка уже активна - ничего не делаем
             if(btn.classList.contains('active')) return;
 
-            // Обратная связь TWA
             if (tg && tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
             }
 
-            // Прячем все
             document.querySelectorAll('iframe').forEach(frame => frame.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
             
-            // Показываем нужное
             document.getElementById(`win-${windowId}`).classList.add('active');
             btn.classList.add('active');
         }
