@@ -1,48 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Ключевое: interactive-widget=resizes-content — разрешает клавиатуре изменять viewport, но мы это обойдём -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <!-- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: меняем interactive-widget на resizes-visual,
+         чтобы клавиатура НЕ изменяла размеры окна (layout viewport) 
+         и fixed-навигация оставалась внизу экрана, не поднимаясь вместе с клавиатурой -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual">
     <meta name="theme-color" content="#0c1017">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Amigo Hub — Terminal & Notepad</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* Глобальный сброс — никаких случайных выделений */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Корневая фиксация: body имеет жёсткую высоту (управляется через JS), которая НЕ меняется при появлении клавиатуры */
-        html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #0c1017;
+        :root {
+            --bg-color: #0c1017;
+            --nav-bg: rgba(17, 21, 29, 0.92);
+            --nav-border: #1f242c;
+            --text-muted: #8e9eae;
+            --accent: #3b82f6;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --nav-height: 56px;
         }
 
-        body {
-            position: relative;
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #0c1017;
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #0c1017;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* Контейнер для iframe: занимает всё пространство от верха до навигации */
+        /* Контейнер окон — абсолютное позиционирование, высота задаётся JS, но клавиатура его не сжимает */
         .window-container {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            bottom: 56px;          /* стандартная высота навигации, будет уточнена через JS и переменную */
             overflow: hidden;
-            background-color: #0c1017;
             z-index: 1;
+            background-color: var(--bg-color);
         }
 
         iframe {
@@ -55,7 +66,7 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.2s ease;
-            background-color: #0c1017;
+            background-color: var(--bg-color);
         }
 
         iframe.active {
@@ -64,23 +75,23 @@
             z-index: 2;
         }
 
-        /* Навигация всегда внизу body (абсолютное позиционирование) — не поднимается вместе с клавиатурой */
+        /* Навигация — всегда внизу экрана, клавиатура её не поднимает (благодаря meta interactive-widget=resizes-visual) */
         nav {
-            position: absolute;
+            position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 56px;
-            background: rgba(17, 21, 29, 0.92);
+            height: var(--nav-height);
+            padding-bottom: var(--safe-bottom);
+            background: var(--nav-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border-top: 0.5px solid #1f242c;
+            border-top: 0.5px solid var(--nav-border);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
             z-index: 20;
-            padding-bottom: env(safe-area-inset-bottom, 0px);
+            gap: 8px;
             box-sizing: content-box;
         }
 
@@ -90,7 +101,7 @@
             height: 100%;
             background: none;
             border: none;
-            color: #8e9eae;
+            color: var(--text-muted);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -109,7 +120,7 @@
         }
 
         .nav-tab.active {
-            color: #3b82f6;
+            color: var(--accent);
         }
 
         .nav-tab svg {
@@ -123,7 +134,7 @@
             transform: translateY(-2px);
         }
 
-        /* Запрет скролла страницы */
+        /* Скрываем скроллбары */
         ::-webkit-scrollbar {
             display: none;
         }
@@ -160,73 +171,33 @@
 
 <script>
     (function() {
-        // ---- РАДИКАЛЬНОЕ РЕШЕНИЕ: ФИКСИРОВАННАЯ ВЫСОТА BODY, ИГНОРИРУЮЩАЯ КЛАВИАТУРУ ----
-        // При открытии клавиатуры window.innerHeight уменьшается, но мы НЕ обновляем высоту body,
-        // благодаря чему навигация (position: absolute; bottom:0) остаётся внизу, а клавиатура наезжает сверху.
-        // Контейнер iframe привязан к верху и к nav, его высота автоматически подстраивается под body.
+        // ---- Теперь, благодаря interactive-widget=resizes-visual, клавиатура не меняет layout viewport,
+        //     и fixed-панель остаётся внизу. Оставшийся JS нужен только для корректной работы iframe и адаптации под повороты.
         
-        let stableViewportHeight = window.innerHeight;   // физическая высота экрана без клавиатуры
-        let isKeyboardOpen = false;
-        let resizeTimer = null;
+        const container = document.getElementById('windowContainer');
+        const NAV_HEIGHT = 56;
         
-        // Функция, которая "замораживает" высоту body и пересчитывает размещение контейнера iframe
-        function freezeBodyHeight(forceUpdate = false) {
-            const currentHeight = window.innerHeight;
-            const heightDiff = Math.abs(currentHeight - stableViewportHeight);
-            
-            // Если разница больше 100px — это клавиатура (на большинстве устройств)
-            if (!forceUpdate && heightDiff > 100) {
-                isKeyboardOpen = true;
-                // Высота body НЕ МЕНЯЕТСЯ, сохраняем стабильную высоту
-                // Это значит, что nav остаётся внизу под клавиатурой — именно то, что нужно
-                return;
-            }
-            
-            // Если разница мала (< 80px) или принудительно (поворот экрана) — обновляем стабильную высоту
-            if (forceUpdate || heightDiff <= 80) {
-                if (isKeyboardOpen && heightDiff <= 80) {
-                    isKeyboardOpen = false;
-                }
-                stableViewportHeight = currentHeight;
-                // Применяем жёсткую высоту к body (игнорируя клавиатуру в дальнейшем)
-                document.body.style.height = stableViewportHeight + 'px';
-                // Пересчитываем bottom для контейнера iframe (он должен быть относительно nav)
-                const navHeight = 56;
-                const container = document.getElementById('windowContainer');
-                if (container) {
-                    container.style.bottom = navHeight + 'px';
-                }
-            }
+        let stableViewportHeight = window.innerHeight;
+        
+        function updateContainerHeight() {
+            // Высота контейнера = полная высота окна минус высота навигации
+            let targetHeight = window.innerHeight - NAV_HEIGHT;
+            if (targetHeight < 80) targetHeight = 80;
+            container.style.height = targetHeight + 'px';
         }
         
-        // Обработчик изменения размеров окна (ресайз) — отличаем клавиатуру от поворота
-        function onResize() {
-            if (resizeTimer) clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(() => {
-                const currentWidth = window.innerWidth;
-                const storedWidth = window.__storedWidth || currentWidth;
-                const isOrientationChange = Math.abs(currentWidth - storedWidth) > 100;
-                window.__storedWidth = currentWidth;
-                
-                if (isOrientationChange) {
-                    // Поворот экрана: обновляем высоту принудительно
-                    stableViewportHeight = window.innerHeight;
-                    freezeBodyHeight(true);
-                } else {
-                    // Обычное изменение (клавиатура) — игнорируем, body не трогаем
-                    freezeBodyHeight(false);
-                }
-            }, 40);
+        function onResizeOrRotate() {
+            // При повороте экрана или изменении размера (без клавиатуры) обновляем высоту контейнера
+            stableViewportHeight = window.innerHeight;
+            updateContainerHeight();
         }
         
-        // ---- Блокировка любых прокруток страницы, мешающих интерфейсу ----
-        function disableBodyScroll() {
+        // Блокировка скролла на родителе, но внутри iframe скролл работает
+        function preventBodyScroll() {
             document.body.addEventListener('touchmove', function(e) {
-                // Если цель внутри iframe — пропускаем, иначе блокируем
-                if (e.target && e.target.closest && e.target.closest('iframe')) {
-                    return;
+                if (e.target.closest && !e.target.closest('iframe')) {
+                    e.preventDefault();
                 }
-                e.preventDefault();
             }, { passive: false });
             
             document.body.addEventListener('wheel', function(e) {
@@ -236,10 +207,9 @@
             }, { passive: false });
         }
         
-        // ---- Инициализация Telegram WebApp и локализация ----
+        // Telegram WebApp инициализация
         let tg = null;
         let userLang = 'en';
-        
         try {
             if (window.Telegram && window.Telegram.WebApp) {
                 tg = window.Telegram.WebApp;
@@ -247,57 +217,49 @@
                 tg.expand();
                 tg.setHeaderColor('#0c1017');
                 tg.setBackgroundColor('#0c1017');
-                if (typeof tg.disableVerticalSwipes === 'function') {
-                    tg.disableVerticalSwipes();
-                }
+                if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes();
                 if (tg.initDataUnsafe?.user?.language_code) {
                     userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
                 }
             }
-        } catch(e) { console.warn("Telegram WebApp not available"); }
+        } catch(e) { /* Тихо падаем */ }
         
-        const i18n = {
+        const i18nMap = {
             uk: { crypto: "Термінал", note: "Блокнот" },
             ru: { crypto: "Терминал", note: "Блокнот" },
             en: { crypto: "Terminal", note: "Notepad" }
         };
-        const langPack = i18n[userLang] || i18n['en'];
+        const langPack = i18nMap[userLang] || i18nMap['en'];
         
-        // URL приложений (рабочие)
         const APP_URLS = {
             crypto: "https://amigo-crypto.netlify.app",
             note: "https://amigo-note.netlify.app"
         };
         
-        // Загрузка iframe (ленивая, без конфликтов)
         function loadIframe(id, url) {
             const iframe = document.getElementById(id);
             if (!iframe) return;
             if (iframe.src && iframe.src !== 'about:blank') return;
             iframe.src = url;
             iframe.onerror = () => {
-                iframe.srcdoc = '<html style="background:#0c1017; color:#fff; display:flex; align-items:center; justify-content:center; font-family:system-ui;"><div>⚠️ Connection error<br>Tap to retry</div></html>';
+                iframe.srcdoc = '<html style="background:#0c1017; color:#fff; display:flex; align-items:center; justify-content:center; font-family:system-ui;"><div>⚠️ Ошибка соединения<br>Нажмите для повтора</div></html>';
             };
         }
         
-        // Переключение между окнами с тактильной отдачей
-        function switchWindow(windowId, btnElement) {
+        function switchToWindow(windowId, btnElement) {
             if (btnElement && btnElement.classList.contains('active')) return;
             
             if (tg && tg.HapticFeedback) {
                 try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
             }
             
-            // Переключение iframe
             document.querySelectorAll('iframe').forEach(iframe => iframe.classList.remove('active'));
-            const targetFrame = document.getElementById(`win-${windowId}`);
-            if (targetFrame) targetFrame.classList.add('active');
+            const targetIframe = document.getElementById(`win-${windowId}`);
+            if (targetIframe) targetIframe.classList.add('active');
             
-            // Активная кнопка
             document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
             if (btnElement) btnElement.classList.add('active');
             
-            // Ленивая загрузка, если ещё не загружено
             if (windowId === 'crypto' && (!document.getElementById('win-crypto').src || document.getElementById('win-crypto').src === 'about:blank')) {
                 loadIframe('win-crypto', APP_URLS.crypto);
             } else if (windowId === 'note' && (!document.getElementById('win-note').src || document.getElementById('win-note').src === 'about:blank')) {
@@ -305,67 +267,51 @@
             }
         }
         
-        // Установка текста на кнопки
-        function setButtonLabels() {
+        function updateButtonTexts() {
             const cryptoLabel = document.getElementById('text-crypto');
             const noteLabel = document.getElementById('text-note');
             if (cryptoLabel) cryptoLabel.innerText = langPack.crypto;
             if (noteLabel) noteLabel.innerText = langPack.note;
         }
         
-        // ---- ГЛАВНЫЙ ЗАПУСК ----
+        // Главная инициализация
         window.addEventListener('DOMContentLoaded', () => {
-            // Фиксируем высоту body один раз (игнорируем клавиатуру)
-            freezeBodyHeight(true);
-            setButtonLabels();
+            updateButtonTexts();
+            updateContainerHeight();
             
-            // Предзагрузка первого окна и ленивая загрузка второго
+            // Предзагрузка iframe
             loadIframe('win-crypto', APP_URLS.crypto);
             setTimeout(() => {
                 if (!document.getElementById('win-note').src || document.getElementById('win-note').src === 'about:blank') {
                     loadIframe('win-note', APP_URLS.note);
                 }
-            }, 500);
+            }, 400);
             
-            // Слушаем изменения размеров окна (повороты и клавиатуру — фильтруем)
-            window.addEventListener('resize', onResize);
+            window.addEventListener('resize', onResizeOrRotate);
             window.addEventListener('orientationchange', () => {
-                setTimeout(() => {
-                    stableViewportHeight = window.innerHeight;
-                    freezeBodyHeight(true);
-                }, 30);
+                setTimeout(onResizeOrRotate, 30);
             });
             
-            // Блокировка скроллов страницы
-            disableBodyScroll();
+            preventBodyScroll();
             
-            // Обработчики кнопок
             const cryptoBtn = document.getElementById('btn-crypto');
             const noteBtn = document.getElementById('btn-note');
-            
             cryptoBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                switchWindow('crypto', cryptoBtn);
+                switchToWindow('crypto', cryptoBtn);
             });
             noteBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                switchWindow('note', noteBtn);
+                switchToWindow('note', noteBtn);
             });
             
-            // Если Telegram WebApp активен, расширяем на весь экран
             if (tg && typeof tg.expand === 'function') tg.expand();
-            
-            // Дополнительная защита: если фокус внутри iframe, запрещаем скролл родителя
-            const iframes = document.querySelectorAll('iframe');
-            iframes.forEach(iframe => {
-                iframe.addEventListener('focus', () => {
-                    window.scrollTo(0, 0);
-                });
-            });
         });
         
-        // Экспорт для возможной отладки
-        window.__fixKeyboardAmigo = () => freezeBodyHeight(true);
+        // Дополнительная коррекция после полной загрузки iframe
+        window.addEventListener('load', () => {
+            updateContainerHeight();
+        });
     })();
 </script>
 </body>
