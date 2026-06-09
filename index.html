@@ -1,88 +1,90 @@
+<!-- ФАЙЛ 1: index.html (Amigo Hub) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <!-- Красим системные бары телефона в темный цвет -->
-    <meta name="theme-color" content="#11151d">
+    <meta name="theme-color" content="#0c1017">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Amigo Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* Бронебойная основа */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-color: #0c1017;
+            --nav-bg: #11151d;
+            --nav-border: #1f242c;
+            --text-muted: #576575;
+            --accent: #2962ff;
+            /* 2026 Trend: Dynamic Viewport Height for perfect mobile fit without white bars */
+            --app-height: 100dvh; 
+            /* Safe area for iOS bottom bar */
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --nav-height: calc(48px + var(--safe-bottom));
+        }
+
         html, body {
-            width: 100%;
-            height: 100vh;
-            height: -webkit-fill-available;
-            background-color: #11151d;
+            margin: 0;
+            padding: 0;
+            background-color: var(--nav-bg) !important;
             color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: var(--app-height);
+            width: 100vw;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            /* Убираем любые белые полосы снизу */
+            position: fixed;
+            overscroll-behavior: none; /* Prevents pull-to-refresh bounce */
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Контейнер для окон */
+        /* Изолированный контейнер для iframe */
         .window-container {
-            flex: 1 1 auto;
-            min-height: 0; /* обязательно для flex-дочернего */
-            position: relative;
-            overflow: hidden;
-            background-color: #0c1017;
-        }
-
-        iframe {
             position: absolute;
             top: 0;
             left: 0;
+            right: 0;
+            bottom: var(--nav-height);
+            background-color: var(--bg-color);
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        iframe {
             width: 100%;
             height: 100%;
             border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.25s ease, visibility 0.25s ease;
-            pointer-events: none;
+            transition: opacity 0.2s ease-in-out;
+            background-color: var(--bg-color);
         }
 
         iframe.active {
             opacity: 1;
             visibility: visible;
-            pointer-events: auto;
+            z-index: 2;
         }
 
-        /* Сообщение при ошибке загрузки iframe */
-        .fallback-message {
-            display: none;
+        /* Современная ультра-тонкая навигация */
+        nav {
             position: absolute;
-            top: 0;
+            bottom: 0;
             left: 0;
             right: 0;
-            bottom: 0;
-            background: #0c1017;
+            height: var(--nav-height);
+            padding-bottom: var(--safe-bottom);
+            background: rgba(17, 21, 29, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--nav-border);
+            display: flex;
+            align-items: center;
             justify-content: center;
-            align-items: center;
-            color: #8b949e;
-            font-size: 1.2rem;
-            flex-direction: column;
-            gap: 10px;
+            box-sizing: border-box;
             z-index: 10;
-        }
-        .fallback-message.active {
-            display: flex;
-        }
-
-        /* Навигационное меню (ультра-тонкое) */
-        nav {
-            flex-shrink: 0;
-            height: 40px;
-            background-color: #11151d;
-            border-top: 1px solid #1f242c;
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            padding-bottom: env(safe-area-inset-bottom, 0); /* убираем белую полосу на iPhone */
+            gap: 4px;
         }
 
         .nav-tab {
@@ -90,49 +92,59 @@
             height: 100%;
             background: none;
             border: none;
-            color: #576575;
+            color: var(--text-muted);
             display: flex;
-            flex-direction: row;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             font-weight: 600;
+            letter-spacing: 0.3px;
             -webkit-tap-highlight-color: transparent;
-            transition: color 0.2s;
-            padding: 0 4px;
-            min-width: 0;
+            transition: color 0.2s, transform 0.1s;
+            max-width: 120px;
+        }
+
+        .nav-tab:active {
+            transform: scale(0.95);
         }
 
         .nav-tab.active {
-            color: #2962ff;
+            color: var(--accent);
         }
 
         .nav-tab svg {
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             fill: currentColor;
-            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+
+        .nav-tab.active svg {
+            transform: translateY(-2px);
         }
     </style>
 </head>
 <body>
 
     <div class="window-container">
-        <!-- Окно Крипто Терминала -->
-        <iframe id="win-crypto" class="active" src="https://amigo-crypto.netlify.app" title="Crypto Terminal" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+        <!-- Sandboxed iframes для безопасности и независимости. Упадет один - другие работают. -->
+        <iframe id="win-crypto" class="active" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
         
-        <!-- Окно Блокнота -->
-        <iframe id="win-note" src="https://amigo-note.netlify.app" title="Notepad" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+        <iframe id="win-note" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
         
-        <!-- Заготовка для третьего окна (Wallet) – закомментирована -->
-        <!-- <iframe id="win-wallet" src="https://amigo-wallet.netlify.app" title="Wallet" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe> -->
-
-        <!-- Заглушки при ошибках загрузки -->
-        <div id="fallback-crypto" class="fallback-message">⚠️ Crypto Terminal недоступен</div>
-        <div id="fallback-note" class="fallback-message">⚠️ Notepad недоступен</div>
-        <!-- <div id="fallback-wallet" class="fallback-message">⚠️ Wallet недоступен</div> -->
+        <!-- Задел под 3-й модуль -->
+        <!--
+        <iframe id="win-tools" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
+        -->
     </div>
 
     <nav>
@@ -140,115 +152,86 @@
             <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.09-4-4L3 15.17l1.5 1.32z"/></svg>
             <span id="text-crypto">Terminal</span>
         </button>
+
+        <!-- Задел под 3-ю кнопку в центре (Инструменты / Портфолио / Новости) -->
+        <!--
+        <button id="btn-tools" class="nav-tab" onclick="switchWindow('tools', this)">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
+            <span id="text-tools">Tools</span>
+        </button>
+        -->
+
         <button id="btn-note" class="nav-tab" onclick="switchWindow('note', this)">
             <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
             <span id="text-note">Notepad</span>
         </button>
-        <!-- Третья кнопка (Wallet) закомментирована -->
-        <!--
-        <button id="btn-wallet" class="nav-tab" onclick="switchWindow('wallet', this)">
-            <svg viewBox="0 0 24 24"><path d="M21 12.5C21 13.33 18.76 14 16 14s-5-.67-5-1.5V15c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5v-2.5zM16 9c-2.76 0-5 .67-5 1.5v1c0 .83 2.24 1.5 5 1.5s5-.67 5-1.5v-1C21 9.67 18.76 9 16 9zM11 12.5v-2C11 9.67 8.76 9 6 9s-5 .67-5 1.5v2C1 11.33 3.24 10 6 10s5 .67 5 1.5v-1c0-.83-2.24-1.5-5-1.5S1 10.67 1 11.5v1C1 11.33 3.24 12 6 12s5-.67 5-1.5v-1z"/></svg>
-            <span id="text-wallet">Wallet</span>
-        </button>
-        -->
     </nav>
 
     <script>
-        // Определение языка пользователя
+        // ЛЕГКАЯ ЗАМЕНА ХОСТИНГА (Netlify -> Github Pages и т.д.)
+        const APP_URLS = {
+            crypto: "https://usalabama.github.io/amigocryptoterninal/",
+            note: "https://usalabama.github.io/amigo-note/",
+            // tools: "https://amigo-tools.netlify.app" // Для будущей 3-й кнопки
+        };
+
+        // Инициализация Telegram WebApp
+        let tg = null;
         let userLang = 'en';
+
         if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
+            tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
-            tg.setHeaderColor('#11151d');
+            tg.setHeaderColor('#0c1017');
             tg.setBackgroundColor('#0c1017');
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) {
+            tg.disableVerticalSwipes(); // Trend 2026: предотвращение случайных закрытий свайпом
+            
+            if (tg.initDataUnsafe?.user?.language_code) {
                 userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
             }
-        } else {
-            const navLang = (navigator.language || 'en').split('-')[0].toLowerCase();
-            if (['uk', 'ru', 'en'].includes(navLang)) userLang = navLang;
         }
 
-        const translations = {
-            uk: { crypto: "Термінал", note: "Блокнот", wallet: "Гаманець" },
-            ru: { crypto: "Терминал", note: "Блокнот", wallet: "Кошелёк" },
-            en: { crypto: "Terminal", note: "Notepad", wallet: "Wallet" }
+        // Продвинутая система локализации
+        const i18n = {
+            uk: { crypto: "Термінал", note: "Блокнот", tools: "Сервіси" },
+            ru: { crypto: "Терминал", note: "Блокнот", tools: "Сервисы" },
+            en: { crypto: "Terminal", note: "Notepad", tools: "Tools" }
         };
 
-        const currentTranslation = translations[userLang] || translations['en'];
-        document.getElementById('text-crypto').innerText = currentTranslation.crypto;
-        document.getElementById('text-note').innerText = currentTranslation.note;
-        // Если третья кнопка активна:
-        // document.getElementById('text-wallet').innerText = currentTranslation.wallet;
+        const t = i18n[userLang] || i18n['en'];
 
-        // Таймауты и обработка ошибок загрузки iframe
-        const iframeTimers = {};
-        const fallbackEls = {
-            crypto: document.getElementById('fallback-crypto'),
-            note: document.getElementById('fallback-note'),
-            // wallet: document.getElementById('fallback-wallet')
-        };
+        // Загрузка источников и текста
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('text-crypto').innerText = t.crypto;
+            document.getElementById('text-note').innerText = t.note;
+            // if(document.getElementById('text-tools')) document.getElementById('text-tools').innerText = t.tools;
 
-        function handleIframeLoad(windowId) {
-            clearTimeout(iframeTimers[windowId]);
-            const fallback = fallbackEls[windowId];
-            if (fallback) fallback.classList.remove('active');
-            const iframe = document.getElementById(`win-${windowId}`);
-            if (iframe) iframe.style.display = ''; // на случай скрытия при ошибке
-        }
-
-        function handleIframeError(windowId) {
-            clearTimeout(iframeTimers[windowId]);
-            const iframe = document.getElementById(`win-${windowId}`);
-            if (iframe) iframe.style.display = 'none';
-            const fallback = fallbackEls[windowId];
-            if (fallback) fallback.classList.add('active');
-        }
-
-        function startIframeTimer(windowId) {
-            iframeTimers[windowId] = setTimeout(() => {
-                handleIframeError(windowId);
-            }, 15000);
-        }
-
-        // Вешаем обработчики на все iframe
-        document.querySelectorAll('iframe').forEach(iframe => {
-            const id = iframe.id.replace('win-', '');
-            iframe.addEventListener('load', () => handleIframeLoad(id));
-            iframe.addEventListener('error', () => handleIframeError(id));
-            if (iframe.classList.contains('active')) {
-                startIframeTimer(id);
-            }
+            // Отложенная загрузка для ускорения первичного рендера Hub'а
+            document.getElementById('win-crypto').src = APP_URLS.crypto;
+            setTimeout(() => {
+                document.getElementById('win-note').src = APP_URLS.note;
+                // document.getElementById('win-tools').src = APP_URLS.tools;
+            }, 500);
         });
 
+        // Логика переключения с оптимизацией DOM
         function switchWindow(windowId, btn) {
-            // Снимаем активность со всех окон
-            document.querySelectorAll('iframe').forEach(frame => {
-                frame.classList.remove('active');
-                const prevId = frame.id.replace('win-', '');
-                clearTimeout(iframeTimers[prevId]);
-            });
+            // Если кнопка уже активна - ничего не делаем
+            if(btn.classList.contains('active')) return;
+
+            // Обратная связь TWA
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+
+            // Прячем все
+            document.querySelectorAll('iframe').forEach(frame => frame.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.fallback-message').forEach(el => el.classList.remove('active'));
-
-            const targetIframe = document.getElementById(`win-${windowId}`);
-            const targetFallback = fallbackEls[windowId];
-
-            if (targetIframe) {
-                targetIframe.classList.add('active');
-                targetIframe.style.display = ''; // возвращаем видимость, если была скрыта
-                startIframeTimer(windowId);
-            } else if (targetFallback) {
-                targetFallback.classList.add('active');
-            }
-
+            
+            // Показываем нужное
+            document.getElementById(`win-${windowId}`).classList.add('active');
             btn.classList.add('active');
-
-            // Тактильная отдача Telegram
-            if (window.Telegram && window.Telegram.WebApp.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
-            }
         }
     </script>
 </body>
