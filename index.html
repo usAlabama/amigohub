@@ -1,59 +1,51 @@
+<!-- ФАЙЛ 1: index.html (Amigo Hub) -->
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: меняем interactive-widget на resizes-visual,
-         чтобы клавиатура НЕ изменяла размеры окна (layout viewport) 
-         и fixed-навигация оставалась внизу экрана, не поднимаясь вместе с клавиатурой -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
     <meta name="theme-color" content="#0c1017">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Amigo Hub — Terminal & Notepad</title>
+    <title>Amigo Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* Глобальный сброс — никаких случайных выделений */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
         :root {
             --bg-color: #0c1017;
-            --nav-bg: rgba(17, 21, 29, 0.92);
+            --nav-bg: #11151d;
             --nav-border: #1f242c;
-            --text-muted: #8e9eae;
-            --accent: #3b82f6;
+            --text-muted: #576575;
+            --accent: #2962ff;
+            /* Убрали 100dvh. Ставим fallback на 100vh, а точный размер задаст JS */
+            --app-height: 100vh; 
+            /* Safe area for iOS bottom bar */
             --safe-bottom: env(safe-area-inset-bottom, 0px);
-            --nav-height: 56px;
+            --nav-height: calc(48px + var(--safe-bottom));
         }
 
         html, body {
             margin: 0;
             padding: 0;
-            background-color: #0c1017;
-            width: 100%;
-            height: 100%;
+            background-color: var(--nav-bg) !important;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: var(--app-height);
+            width: 100vw;
             overflow: hidden;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overscroll-behavior: none; /* Prevents pull-to-refresh bounce */
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Контейнер окон — абсолютное позиционирование, высота задаётся JS, но клавиатура его не сжимает */
+        /* Изолированный контейнер для iframe */
         .window-container {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
+            bottom: var(--nav-height);
+            background-color: var(--bg-color);
             overflow: hidden;
             z-index: 1;
-            background-color: var(--bg-color);
         }
 
         iframe {
@@ -65,7 +57,7 @@
             left: 0;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.2s ease;
+            transition: opacity 0.2s ease-in-out;
             background-color: var(--bg-color);
         }
 
@@ -75,29 +67,28 @@
             z-index: 2;
         }
 
-        /* Навигация — всегда внизу экрана, клавиатура её не поднимает (благодаря meta interactive-widget=resizes-visual) */
+        /* Современная ультра-тонкая навигация */
         nav {
-            position: fixed;
+            position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             height: var(--nav-height);
             padding-bottom: var(--safe-bottom);
-            background: var(--nav-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-top: 0.5px solid var(--nav-border);
+            background: rgba(17, 21, 29, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--nav-border);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 20;
-            gap: 8px;
-            box-sizing: content-box;
+            box-sizing: border-box;
+            z-index: 10;
+            gap: 4px;
         }
 
         .nav-tab {
             flex: 1;
-            max-width: 130px;
             height: 100%;
             background: none;
             border: none;
@@ -107,16 +98,17 @@
             justify-content: center;
             align-items: center;
             gap: 4px;
+            cursor: pointer;
             font-size: 0.7rem;
             font-weight: 600;
-            letter-spacing: 0.2px;
-            cursor: pointer;
+            letter-spacing: 0.3px;
+            -webkit-tap-highlight-color: transparent;
             transition: color 0.2s, transform 0.1s;
-            border-radius: 12px;
+            max-width: 120px;
         }
 
         .nav-tab:active {
-            transform: scale(0.96);
+            transform: scale(0.95);
         }
 
         .nav-tab.active {
@@ -124,8 +116,8 @@
         }
 
         .nav-tab svg {
-            width: 22px;
-            height: 22px;
+            width: 20px;
+            height: 20px;
             fill: currentColor;
             transition: transform 0.2s;
         }
@@ -133,186 +125,137 @@
         .nav-tab.active svg {
             transform: translateY(-2px);
         }
-
-        /* Скрываем скроллбары */
-        ::-webkit-scrollbar {
-            display: none;
-        }
     </style>
 </head>
 <body>
 
-<div class="window-container" id="windowContainer">
-    <iframe id="win-crypto" class="active"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-            title="Crypto Terminal"
-            loading="eager"></iframe>
+    <div class="window-container">
+        <!-- Sandboxed iframes для безопасности и независимости. Упадет один - другие работают. -->
+        <iframe id="win-crypto" class="active" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
+        
+        <iframe id="win-note" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
+        
+        <!-- Задел под 3-й модуль -->
+        <!--
+        <iframe id="win-tools" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
+        -->
+    </div>
 
-    <iframe id="win-note"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-            title="Secure Notepad"
-            loading="lazy"></iframe>
-</div>
+    <nav>
+        <button id="btn-crypto" class="nav-tab active" onclick="switchWindow('crypto', this)">
+            <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.09-4-4L3 15.17l1.5 1.32z"/></svg>
+            <span id="text-crypto">Terminal</span>
+        </button>
 
-<nav>
-    <button id="btn-crypto" class="nav-tab active" data-window="crypto">
-        <svg viewBox="0 0 24 24">
-            <path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.09-4-4L3 15.17l1.5 1.32z"/>
-        </svg>
-        <span id="text-crypto">Terminal</span>
-    </button>
-    <button id="btn-note" class="nav-tab" data-window="note">
-        <svg viewBox="0 0 24 24">
-            <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
-        </svg>
-        <span id="text-note">Notepad</span>
-    </button>
-</nav>
+        <!-- Задел под 3-ю кнопку в центре (Инструменты / Портфолио / Новости) -->
+        <!--
+        <button id="btn-tools" class="nav-tab" onclick="switchWindow('tools', this)">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 9h-2V7h-2v5H6v2h2v5h2v-5h2v-2z"/></svg>
+            <span id="text-tools">Tools</span>
+        </button>
+        -->
 
-<script>
-    (function() {
-        // ---- Теперь, благодаря interactive-widget=resizes-visual, клавиатура не меняет layout viewport,
-        //     и fixed-панель остаётся внизу. Оставшийся JS нужен только для корректной работы iframe и адаптации под повороты.
-        
-        const container = document.getElementById('windowContainer');
-        const NAV_HEIGHT = 56;
-        
-        let stableViewportHeight = window.innerHeight;
-        
-        function updateContainerHeight() {
-            // Высота контейнера = полная высота окна минус высота навигации
-            let targetHeight = window.innerHeight - NAV_HEIGHT;
-            if (targetHeight < 80) targetHeight = 80;
-            container.style.height = targetHeight + 'px';
-        }
-        
-        function onResizeOrRotate() {
-            // При повороте экрана или изменении размера (без клавиатуры) обновляем высоту контейнера
-            stableViewportHeight = window.innerHeight;
-            updateContainerHeight();
-        }
-        
-        // Блокировка скролла на родителе, но внутри iframe скролл работает
-        function preventBodyScroll() {
-            document.body.addEventListener('touchmove', function(e) {
-                if (e.target.closest && !e.target.closest('iframe')) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
-            
-            document.body.addEventListener('wheel', function(e) {
-                if (!e.target.closest('iframe')) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
-        }
-        
-        // Telegram WebApp инициализация
-        let tg = null;
-        let userLang = 'en';
-        try {
-            if (window.Telegram && window.Telegram.WebApp) {
-                tg = window.Telegram.WebApp;
-                tg.ready();
-                tg.expand();
-                tg.setHeaderColor('#0c1017');
-                tg.setBackgroundColor('#0c1017');
-                if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes();
-                if (tg.initDataUnsafe?.user?.language_code) {
-                    userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
-                }
-            }
-        } catch(e) { /* Тихо падаем */ }
-        
-        const i18nMap = {
-            uk: { crypto: "Термінал", note: "Блокнот" },
-            ru: { crypto: "Терминал", note: "Блокнот" },
-            en: { crypto: "Terminal", note: "Notepad" }
-        };
-        const langPack = i18nMap[userLang] || i18nMap['en'];
-        
+        <button id="btn-note" class="nav-tab" onclick="switchWindow('note', this)">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            <span id="text-note">Notepad</span>
+        </button>
+    </nav>
+
+    <script>
+        // ЛЕГКАЯ ЗАМЕНА ХОСТИНГА (Netlify -> Github Pages и т.д.)
         const APP_URLS = {
-            crypto: "https://amigo-crypto.netlify.app",
-            note: "https://amigo-note.netlify.app"
+            crypto: "https://usalabama.github.io/amigocryptoterninal/",
+            note: "https://usalabama.github.io/amigo-note/",
+            // tools: "https://amigo-tools.netlify.app" // Для будущей 3-й кнопки
         };
-        
-        function loadIframe(id, url) {
-            const iframe = document.getElementById(id);
-            if (!iframe) return;
-            if (iframe.src && iframe.src !== 'about:blank') return;
-            iframe.src = url;
-            iframe.onerror = () => {
-                iframe.srcdoc = '<html style="background:#0c1017; color:#fff; display:flex; align-items:center; justify-content:center; font-family:system-ui;"><div>⚠️ Ошибка соединения<br>Нажмите для повтора</div></html>';
-            };
-        }
-        
-        function switchToWindow(windowId, btnElement) {
-            if (btnElement && btnElement.classList.contains('active')) return;
-            
-            if (tg && tg.HapticFeedback) {
-                try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
-            }
-            
-            document.querySelectorAll('iframe').forEach(iframe => iframe.classList.remove('active'));
-            const targetIframe = document.getElementById(`win-${windowId}`);
-            if (targetIframe) targetIframe.classList.add('active');
-            
-            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
-            if (btnElement) btnElement.classList.add('active');
-            
-            if (windowId === 'crypto' && (!document.getElementById('win-crypto').src || document.getElementById('win-crypto').src === 'about:blank')) {
-                loadIframe('win-crypto', APP_URLS.crypto);
-            } else if (windowId === 'note' && (!document.getElementById('win-note').src || document.getElementById('win-note').src === 'about:blank')) {
-                loadIframe('win-note', APP_URLS.note);
-            }
-        }
-        
-        function updateButtonTexts() {
-            const cryptoLabel = document.getElementById('text-crypto');
-            const noteLabel = document.getElementById('text-note');
-            if (cryptoLabel) cryptoLabel.innerText = langPack.crypto;
-            if (noteLabel) noteLabel.innerText = langPack.note;
-        }
-        
-        // Главная инициализация
+
+        // Инициализация Telegram WebApp
+		let tg = null;
+		let userLang = 'en';
+
+		// Функция жесткой фиксации высоты
+		const fixAppHeight = () => {
+			// Используем стабильную высоту от ТГ (без учета клавиатуры) или окно браузера как фоллбэк
+			const height = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : window.innerHeight;
+			document.documentElement.style.setProperty('--app-height', `${height}px`);
+		};
+
+		if (window.Telegram && window.Telegram.WebApp) {
+			tg = window.Telegram.WebApp;
+			tg.ready();
+			tg.expand();
+			tg.setHeaderColor('#0c1017');
+			tg.setBackgroundColor('#0c1017');
+			
+			// Trend 2026: предотвращение случайных закрытий свайпом (если метод поддерживается)
+			if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); 
+			
+			if (tg.initDataUnsafe?.user?.language_code) {
+				userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
+			}
+
+			// Слушаем изменение вьюпорта от ТГ и фиксируем высоту
+			tg.onEvent('viewportChanged', fixAppHeight);
+		} else {
+			// Фоллбэк для браузера: игнорируем резкие скачки высоты (открытие клавиатуры)
+			let initHeight = window.innerHeight;
+			window.addEventListener('resize', () => {
+				if (Math.abs(window.innerHeight - initHeight) > 150) return; // Клава выехала - игнорим
+				initHeight = window.innerHeight;
+				fixAppHeight();
+			});
+		}
+
+		// Применяем высоту при старте
+		fixAppHeight();
+
+        // Продвинутая система локализации
+        const i18n = {
+            uk: { crypto: "Термінал", note: "Блокнот", tools: "Сервіси" },
+            ru: { crypto: "Терминал", note: "Блокнот", tools: "Сервисы" },
+            en: { crypto: "Terminal", note: "Notepad", tools: "Tools" }
+        };
+
+        const t = i18n[userLang] || i18n['en'];
+
+        // Загрузка источников и текста
         window.addEventListener('DOMContentLoaded', () => {
-            updateButtonTexts();
-            updateContainerHeight();
-            
-            // Предзагрузка iframe
-            loadIframe('win-crypto', APP_URLS.crypto);
+            document.getElementById('text-crypto').innerText = t.crypto;
+            document.getElementById('text-note').innerText = t.note;
+            // if(document.getElementById('text-tools')) document.getElementById('text-tools').innerText = t.tools;
+
+            // Отложенная загрузка для ускорения первичного рендера Hub'а
+            document.getElementById('win-crypto').src = APP_URLS.crypto;
             setTimeout(() => {
-                if (!document.getElementById('win-note').src || document.getElementById('win-note').src === 'about:blank') {
-                    loadIframe('win-note', APP_URLS.note);
-                }
-            }, 400);
-            
-            window.addEventListener('resize', onResizeOrRotate);
-            window.addEventListener('orientationchange', () => {
-                setTimeout(onResizeOrRotate, 30);
-            });
-            
-            preventBodyScroll();
-            
-            const cryptoBtn = document.getElementById('btn-crypto');
-            const noteBtn = document.getElementById('btn-note');
-            cryptoBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                switchToWindow('crypto', cryptoBtn);
-            });
-            noteBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                switchToWindow('note', noteBtn);
-            });
-            
-            if (tg && typeof tg.expand === 'function') tg.expand();
+                document.getElementById('win-note').src = APP_URLS.note;
+                // document.getElementById('win-tools').src = APP_URLS.tools;
+            }, 500);
         });
-        
-        // Дополнительная коррекция после полной загрузки iframe
-        window.addEventListener('load', () => {
-            updateContainerHeight();
-        });
-    })();
-</script>
+
+        // Логика переключения с оптимизацией DOM
+        function switchWindow(windowId, btn) {
+            // Если кнопка уже активна - ничего не делаем
+            if(btn.classList.contains('active')) return;
+
+            // Обратная связь TWA
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+
+            // Прячем все
+            document.querySelectorAll('iframe').forEach(frame => frame.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            
+            // Показываем нужное
+            document.getElementById(`win-${windowId}`).classList.add('active');
+            btn.classList.add('active');
+        }
+    </script>
 </body>
 </html>
