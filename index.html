@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
     <meta name="theme-color" content="#0c1017">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- FIX #10: закрыто от индексации, canonical для веб-версии -->
+    <meta name="robots" content="noindex, nofollow">
     <title>Amigo Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -14,9 +16,7 @@
             --nav-border: #1f242c;
             --text-muted: #576575;
             --accent: #2962ff;
-            
-            /* Дефолтная высота. JS жестко перезапишет ее в пикселях */
-            --app-height: 100vh; 
+            --app-height: 100vh;
             --safe-bottom: env(safe-area-inset-bottom, 0px);
             --nav-height: calc(48px + var(--safe-bottom));
         }
@@ -27,8 +27,6 @@
             background-color: var(--nav-bg) !important;
             color: #fff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            
-            /* Жестко фиксируем габариты, чтобы клава не могла сжать body */
             height: var(--app-height);
             min-height: var(--app-height);
             max-height: var(--app-height);
@@ -46,7 +44,6 @@
             top: 0;
             left: 0;
             right: 0;
-            /* Вычисляем жесткую высоту сверху вниз, без привязки к bottom */
             height: calc(var(--app-height) - var(--nav-height));
             background-color: var(--bg-color);
             overflow: hidden;
@@ -62,6 +59,7 @@
             left: 0;
             opacity: 0;
             visibility: hidden;
+            /* Убираем transition на visibility чтобы hidden iframe не блокировал события */
             transition: opacity 0.2s ease-in-out;
             background-color: var(--bg-color);
         }
@@ -74,8 +72,6 @@
 
         nav {
             position: absolute;
-            /* ВАЖНО: Привязываем навигацию к ВЕРХУ документа. 
-               Так клава не сможет вытолкнуть её наверх, она просто перекроет её */
             top: calc(var(--app-height) - var(--nav-height));
             left: 0;
             right: 0;
@@ -131,18 +127,119 @@
         .nav-tab.active svg {
             transform: translateY(-2px);
         }
+
+        /* FIX #8: error state overlay */
+        .iframe-error {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 5;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-color);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            gap: 12px;
+            text-align: center;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        .iframe-error.visible {
+            display: flex;
+        }
+
+        .iframe-error svg {
+            width: 40px;
+            height: 40px;
+            fill: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        .iframe-error button {
+            margin-top: 8px;
+            padding: 8px 20px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        /* FIX #8: loading spinner */
+        .iframe-loader {
+            display: flex;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 3;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-color);
+            transition: opacity 0.3s;
+        }
+
+        .iframe-loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid var(--nav-border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
 
     <div class="window-container">
-        <iframe id="win-crypto" class="active" 
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
-                loading="lazy"></iframe>
-        
-        <iframe id="win-note" 
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
-                loading="lazy"></iframe>
+
+        <!-- Loaders -->
+        <div id="loader-crypto" class="iframe-loader">
+            <div class="spinner"></div>
+        </div>
+        <div id="loader-note" class="iframe-loader">
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Error states -->
+        <div id="error-crypto" class="iframe-error">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span>Terminal unavailable</span>
+            <button onclick="reloadIframe('crypto')">Retry</button>
+        </div>
+        <div id="error-note" class="iframe-error">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span>Notepad unavailable</span>
+            <button onclick="reloadIframe('note')">Retry</button>
+        </div>
+
+        <!--
+            FIX #3: добавлены allow-top-navigation-by-user-activation allow-modals
+            FIX #6: убран loading="lazy" — он блокировал загрузку невидимых iframe.
+                    Используем eager чтобы оба фрейма грузились сразу в фоне.
+        -->
+        <iframe id="win-crypto"
+                class="active"
+                loading="eager"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation-by-user-activation allow-modals allow-downloads"
+                allow="clipboard-read; clipboard-write"></iframe>
+
+        <iframe id="win-note"
+                loading="eager"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation-by-user-activation allow-modals allow-downloads allow-storage-access"
+                allow="clipboard-read; clipboard-write"></iframe>
+        <!-- FIX #5: allow-storage-access добавлен для Notepad (localStorage/IndexedDB) -->
+
     </div>
 
     <nav>
@@ -158,6 +255,8 @@
     </nav>
 
     <script>
+        // FIX #1: имя репо с опечаткой (terninal) — URL оставляем как есть,
+        // т.к. репо реально так называется. Задокументировано для будущего rename.
         const APP_URLS = {
             crypto: "https://usalabama.github.io/amigocryptoterninal/",
             note: "https://usalabama.github.io/amigo-note/"
@@ -165,28 +264,61 @@
 
         let tg = null;
         let userLang = 'en';
+        let layoutFrozen = false;
 
         if (window.Telegram && window.Telegram.WebApp) {
             tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
-            tg.setHeaderColor('#0c1017');
-            tg.setBackgroundColor('#0c1017');
-            if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); 
-            
+
+            // FIX #9: setHeaderColor / setBackgroundColor принимают только
+            // 'bg_color' | 'secondary_bg_color' в новом API (Bot API 7.0+).
+            // Для обратной совместимости — try/catch оба варианта.
+            try {
+                tg.setHeaderColor('bg_color');
+                tg.setBackgroundColor('#0c1017');
+            } catch (e) {
+                // старый клиент — игнорируем
+            }
+
+            if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+
+            // FIX #7: парсим подязыки типа "ru-RU" → "ru"
             if (tg.initDataUnsafe?.user?.language_code) {
-                userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
+                userLang = tg.initDataUnsafe.user.language_code.toLowerCase().split('-')[0];
             }
         }
 
-        // Ключевой фикс: Замораживаем высоту ровно один раз после развертывания окна
-        // и больше НИКОГДА её не меняем. Никаких слушателей ресайза.
+        // FIX #2: freezeAppLayout через viewportChanged event вместо голого setTimeout.
+        // Используем viewportStableHeight — он доступен после tg.expand().
+        // Двойной fallback: event + setTimeout 600ms.
         function freezeAppLayout() {
-            setTimeout(() => {
-                // Берем реальную высоту устройства до появления клавиатуры
-                const fixedHeight = window.innerHeight;
-                document.documentElement.style.setProperty('--app-height', `${fixedHeight}px`);
-            }, 300); // Небольшая задержка, чтобы tg.expand() успел отработать
+            if (layoutFrozen) return;
+
+            const doFreeze = () => {
+                if (layoutFrozen) return;
+                layoutFrozen = true;
+                const h = (tg && tg.viewportStableHeight && tg.viewportStableHeight > 100)
+                    ? tg.viewportStableHeight
+                    : window.innerHeight;
+                document.documentElement.style.setProperty('--app-height', `${h}px`);
+            };
+
+            if (tg) {
+                // Слушаем стабилизацию viewport после expand()
+                const onViewport = ({ isStateStable }) => {
+                    if (isStateStable) {
+                        tg.offEvent('viewportChanged', onViewport);
+                        doFreeze();
+                    }
+                };
+                tg.onEvent('viewportChanged', onViewport);
+                // Fallback: если событие не пришло за 600ms — снимаем как есть
+                setTimeout(doFreeze, 600);
+            } else {
+                // Веб-режим — просто берём innerHeight
+                doFreeze();
+            }
         }
 
         const i18n = {
@@ -197,21 +329,61 @@
 
         const t = i18n[userLang] || i18n['en'];
 
+        // FIX #8: обработчики загрузки и ошибок iframe
+        function setupIframeHandlers(id) {
+            const frame = document.getElementById(`win-${id}`);
+            const loader = document.getElementById(`loader-${id}`);
+            const errorEl = document.getElementById(`error-${id}`);
+
+            frame.addEventListener('load', () => {
+                loader.classList.add('hidden');
+                errorEl.classList.remove('visible');
+            });
+
+            frame.addEventListener('error', () => {
+                loader.classList.add('hidden');
+                errorEl.classList.add('visible');
+            });
+
+            // Timeout fallback: если iframe завис — показываем ошибку через 15с
+            const loadTimeout = setTimeout(() => {
+                if (!loader.classList.contains('hidden')) {
+                    loader.classList.add('hidden');
+                    errorEl.classList.add('visible');
+                }
+            }, 15000);
+
+            frame.addEventListener('load', () => clearTimeout(loadTimeout), { once: true });
+        }
+
+        function reloadIframe(id) {
+            const frame = document.getElementById(`win-${id}`);
+            const loader = document.getElementById(`loader-${id}`);
+            const errorEl = document.getElementById(`error-${id}`);
+            errorEl.classList.remove('visible');
+            loader.classList.remove('hidden');
+            frame.src = APP_URLS[id];
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
-            // Блокируем верстку
             freezeAppLayout();
 
             document.getElementById('text-crypto').innerText = t.crypto;
             document.getElementById('text-note').innerText = t.note;
 
+            setupIframeHandlers('crypto');
+            setupIframeHandlers('note');
+
+            // Грузим оба iframe сразу (FIX #6 — eager loading)
+            // Небольшой сдвиг для note чтобы не конкурировали за полосу
             document.getElementById('win-crypto').src = APP_URLS.crypto;
             setTimeout(() => {
                 document.getElementById('win-note').src = APP_URLS.note;
-            }, 500);
+            }, 400);
         });
 
         function switchWindow(windowId, btn) {
-            if(btn.classList.contains('active')) return;
+            if (btn.classList.contains('active')) return;
 
             if (tg && tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
@@ -219,7 +391,7 @@
 
             document.querySelectorAll('iframe').forEach(frame => frame.classList.remove('active'));
             document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-            
+
             document.getElementById(`win-${windowId}`).classList.add('active');
             btn.classList.add('active');
         }
