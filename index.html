@@ -2,219 +2,239 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#11151d">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
+    <meta name="theme-color" content="#0c1017">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Amigo Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-color: #0c1017;
+            --nav-bg: #11151d;
+            --nav-border: #1f242c;
+            --text-muted: #576575;
+            --accent: #2962ff;
+            
+            --app-height: 100vh; 
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --nav-height: calc(48px + var(--safe-bottom));
+        }
 
-    html, body {
-        background-color: #11151d;
-        color: #fff;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-        height: 100vh;
-        height: -webkit-fill-available;
-        overflow: hidden;
-        position: fixed;
-        width: 100%;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--nav-bg) !important;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            height: var(--app-height);
+            min-height: var(--app-height);
+            max-height: var(--app-height);
+            width: 100vw;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+            overscroll-behavior: none;
+            -webkit-font-smoothing: antialiased;
+        }
 
-    .window-container {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 38px;
-        overflow: hidden;
-        background-color: #0c1017;
-    }
+        .window-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: calc(var(--app-height) - var(--nav-height));
+            background-color: var(--bg-color);
+            overflow: hidden;
+            z-index: 1;
+        }
 
-    iframe {
-        width: 100%; height: 100%; border: none;
-        position: absolute; top: 0; left: 0;
-        display: none; opacity: 0;
-        transition: opacity 0.25s ease-in-out;
-    }
-    iframe.active { display: block; opacity: 1; }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease-in-out;
+            background-color: var(--bg-color);
+        }
 
-    nav {
-        position: absolute; bottom: 0; left: 0; right: 0;
-        height: 38px;
-        background-color: #11151d;
-        border-top: 1px solid #1f242c;
-        display: flex; align-items: center; justify-content: space-around;
-        z-index: 100;
-    }
+        iframe.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 2;
+        }
 
-    .nav-tab {
-        flex: 1; height: 100%; background: none; border: none;
-        color: #576575; display: flex; flex-direction: row;
-        justify-content: center; align-items: center; gap: 5px;
-        cursor: pointer; font-size: 0.75rem; font-weight: 600;
-        -webkit-tap-highlight-color: transparent;
-        transition: color 0.2s ease, transform 0.1s ease;
-        position: relative; overflow: hidden;
-    }
-    .nav-tab:active { transform: scale(0.95); }
-    .nav-tab.active { color: #2962ff; }
-    .nav-tab.active::after {
-        content: ''; position: absolute; bottom: 0; left: 25%;
-        width: 50%; height: 2px; background: #2962ff; border-radius: 1px 1px 0 0;
-    }
-    .nav-tab svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
-    .nav-tab span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        nav {
+            position: absolute;
+            top: calc(var(--app-height) - var(--nav-height));
+            left: 0;
+            right: 0;
+            height: var(--nav-height);
+            padding-bottom: var(--safe-bottom);
+            background: rgba(17, 21, 29, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--nav-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            z-index: 10;
+            gap: 4px;
+        }
 
-    .loading-overlay {
-        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-        background: #0c1017; display: flex; align-items: center; justify-content: center;
-        z-index: 50; transition: opacity 0.3s ease;
-    }
-    .loading-overlay.hidden { opacity: 0; pointer-events: none; }
-    .spinner { width: 24px; height: 24px; border: 2px solid #1f242c; border-top-color: #2962ff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+        .nav-tab {
+            flex: 1;
+            height: 100%;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            -webkit-tap-highlight-color: transparent;
+            transition: color 0.2s, transform 0.1s;
+            max-width: 120px;
+        }
 
-    .offline-indicator {
-        position: absolute; top: 0; left: 0; right: 0; height: 2px;
-        background: #ff5252; z-index: 200; opacity: 0; transition: opacity 0.3s ease;
-    }
-    .offline-indicator.visible { opacity: 1; }
+        .nav-tab:active {
+            transform: scale(0.95);
+        }
 
-    .iframe-error {
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        text-align: center; color: #8b949e; padding: 20px;
-    }
-    .iframe-error svg { width: 48px; height: 48px; fill: #3d444d; margin-bottom: 12px; }
-    .iframe-error p { font-size: 0.85rem; margin-bottom: 16px; }
-    .iframe-error button {
-        background: #2962ff; color: #fff; border: none;
-        padding: 8px 20px; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
-        cursor: pointer; -webkit-tap-highlight-color: transparent;
-    }
+        .nav-tab.active {
+            color: var(--accent);
+        }
+
+        .nav-tab svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+            transition: transform 0.2s;
+        }
+
+        .nav-tab.active svg {
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
-    <div class="offline-indicator" id="offline-bar"></div>
 
     <div class="window-container">
-        <div class="loading-overlay" id="loading-crypto"><div class="spinner"></div></div>
-        <div class="loading-overlay" id="loading-note"><div class="spinner"></div></div>
-        <iframe id="win-crypto" class="active" src="https://usalabama.github.io/amigocryptoterminal/" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="eager"></iframe>
-        <iframe id="win-note" src="https://usalabama.github.io/amigo-note/" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="lazy"></iframe>
-        <iframe id="win-module" src="https://usalabama.github.io/qwentest/" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" loading="lazy"></iframe>
+        <iframe id="win-crypto" class="active" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
+        
+        <iframe id="win-note" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
+
+        <iframe id="win-module" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
     </div>
 
     <nav>
-        <button id="btn-crypto" class="nav-tab active" onclick="switchWindow('crypto', this)" aria-label="Terminal">
+        <button id="btn-crypto" class="nav-tab active" onclick="switchWindow('crypto', this)">
             <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.09-4-4L3 15.17l1.5 1.32z"/></svg>
             <span id="text-crypto">Terminal</span>
         </button>
-        <button id="btn-note" class="nav-tab" onclick="switchWindow('note', this)" aria-label="Notepad">
+
+        <button id="btn-note" class="nav-tab" onclick="switchWindow('note', this)">
             <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
             <span id="text-note">Notepad</span>
         </button>
-        <button id="btn-module" class="nav-tab" onclick="switchWindow('module', this)" aria-label="Module">
-            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+
+        <button id="btn-module" class="nav-tab" onclick="switchWindow('module', this)">
+            <svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
             <span id="text-module">Module</span>
         </button>
     </nav>
 
     <script>
-    (function() {
-        'use strict';
-        const CONFIG = {
-            hostBase: 'netlify.app',
-            defaultLang: 'en',
-            supportedLangs: ['en','ru','uk','es','de','fr','zh','ja','ko'],
-            modules: { crypto: { src: 'amigo-crypto', label: 'Terminal' }, note: { src: 'amigo-note', label: 'Notepad' } }
+        const APP_URLS = {
+            crypto: "https://usalabama.github.io/amigocryptoterminal/",
+            note:   "https://usalabama.github.io/amigo-note/",
+            module: "https://usalabama.github.io/qwentest/"
         };
-        const translations = {
-            uk: { crypto: "Термінал", note: "Блокнот", future: "Скоро" },
-            ru: { crypto: "Терминал", note: "Блокнот", future: "Скоро" },
-            en: { crypto: "Terminal", note: "Notepad", future: "Soon" },
-            es: { crypto: "Terminal", note: "Bloc", future: "Pronto" },
-            de: { crypto: "Terminal", note: "Notizblock", future: "Bald" },
-            fr: { crypto: "Terminal", note: "Bloc-notes", future: "Bientôt" },
-            zh: { crypto: "终端", note: "记事本", future: "即将推出" },
-            ja: { crypto: "ターミナル", note: "メモ帳", future: "近日公開" },
-            ko: { crypto: "터미널", note: "메모장", future: "곧 출시" }
-        };
-        let tg = null, userLang = CONFIG.defaultLang;
+
+        let tg = null;
+        let userLang = 'en';
+
         if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp; tg.ready(); tg.expand();
-            tg.setHeaderColor('#11151d'); tg.setBackgroundColor('#0c1017');
-            if (tg.requestFullscreen) tg.requestFullscreen();
-            if (tg.setTopBarColor) tg.setTopBarColor('#11151d');
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) {
-                const raw = tg.initDataUnsafe.user.language_code.toLowerCase();
-                userLang = CONFIG.supportedLangs.includes(raw) ? raw : CONFIG.defaultLang;
+            tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            tg.setHeaderColor('#0c1017');
+            tg.setBackgroundColor('#0c1017');
+            if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); 
+            
+            if (tg.initDataUnsafe?.user?.language_code) {
+                userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
             }
-            if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
         }
-        const trans = translations[userLang] || translations[CONFIG.defaultLang];
-        Object.keys(CONFIG.modules).forEach(k => {
-            const el = document.getElementById('text-' + k);
-            if (el && trans[k]) el.textContent = trans[k];
-        });
-        let activeWindow = 'crypto';
-        const loadedWindows = new Set(), iframeErrors = new Map();
-        function switchWindow(wid, btn) {
-            if (!btn) btn = document.getElementById('btn-' + wid);
-            if (!btn) return;
-            document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-            const tf = document.getElementById('win-' + wid);
-            if (tf) tf.classList.add('active');
-            btn.classList.add('active');
-            activeWindow = wid;
-            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-            loadedWindows.add(wid);
-            const loader = document.getElementById('loading-' + wid);
-            if (loader) setTimeout(() => loader.classList.add('hidden'), 800);
+
+        function freezeAppLayout() {
+            setTimeout(() => {
+                const fixedHeight = window.innerHeight;
+                document.documentElement.style.setProperty('--app-height', `${fixedHeight}px`);
+            }, 300);
         }
-        window.switchWindow = switchWindow;
-        function updateOnlineStatus() {
-            const bar = document.getElementById('offline-bar');
-            if (!navigator.onLine) { bar.classList.add('visible'); if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); }
-            else bar.classList.remove('visible');
-        }
-        window.addEventListener('online', updateOnlineStatus);
-        window.addEventListener('offline', updateOnlineStatus);
-        updateOnlineStatus();
-        function handleIframeError(wid) {
-            const frame = document.getElementById('win-' + wid);
-            if (!frame) return;
-            try { const d = frame.contentDocument || frame.contentWindow.document; if (!d || d.body.innerHTML === '') showIframeError(wid); }
-            catch(e) {}
-        }
-        function showIframeError(wid) {
-            const frame = document.getElementById('win-' + wid);
-            if (!frame || iframeErrors.has(wid)) return;
-            iframeErrors.set(wid, true);
-            const err = document.createElement('div');
-            err.className = 'iframe-error';
-            const msg = (userLang === 'ru' || userLang === 'uk') ? 'недоступен' : 'unavailable';
-            const reloadText = (userLang === 'ru' || userLang === 'uk') ? 'Перезагрузить' : 'Reload';
-            err.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg><p>${trans[wid] || wid} — ${msg}</p><button onclick="reloadWindow('${wid}')">${reloadText}</button>`;
-            frame.style.display = 'block'; frame.srcdoc = err.outerHTML;
-        }
-        window.reloadWindow = function(wid) {
-            const frame = document.getElementById('win-' + wid);
-            if (frame) { iframeErrors.delete(wid); const m = CONFIG.modules[wid]; if (m) frame.src = `https://${m.src}.${CONFIG.hostBase}`; }
+
+        const i18n = {
+            uk: { crypto: "Термінал",  note: "Блокнот",  module: "Модуль"   },
+            ru: { crypto: "Терминал",  note: "Блокнот",  module: "Модуль"   },
+            en: { crypto: "Terminal",  note: "Notepad",  module: "Module"   },
+            es: { crypto: "Terminal",  note: "Bloc",     module: "Módulo"   },
+            de: { crypto: "Terminal",  note: "Notizblock", module: "Modul"  },
+            fr: { crypto: "Terminal",  note: "Bloc-notes", module: "Module" },
+            zh: { crypto: "终端",      note: "记事本",   module: "模块"     },
+            ja: { crypto: "ターミナル", note: "メモ帳",   module: "モジュール" },
+            ko: { crypto: "터미널",    note: "메모장",   module: "모듈"     }
         };
-        document.addEventListener('visibilitychange', function() {
-            document.querySelectorAll('iframe').forEach(f => { f.style.visibility = document.hidden ? 'hidden' : 'visible'; });
+
+        const t = i18n[userLang] || i18n['en'];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            freezeAppLayout();
+
+            document.getElementById('text-crypto').innerText = t.crypto;
+            document.getElementById('text-note').innerText   = t.note;
+            document.getElementById('text-module').innerText = t.module;
+
+            document.getElementById('win-crypto').src = APP_URLS.crypto;
+
+            setTimeout(() => {
+                document.getElementById('win-note').src = APP_URLS.note;
+            }, 500);
+
+            setTimeout(() => {
+                document.getElementById('win-module').src = APP_URLS.module;
+            }, 1000);
         });
-        document.addEventListener('keydown', function(e) {
-            const tabs = Array.from(document.querySelectorAll('.nav-tab'));
-            const idx = tabs.findIndex(t => t.classList.contains('active'));
-            if (e.key === 'ArrowRight' && idx < tabs.length - 1) tabs[idx + 1].click();
-            else if (e.key === 'ArrowLeft' && idx > 0) tabs[idx - 1].click();
-        });
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function(e) { const n = Date.now(); if (n - lastTouchEnd <= 300) e.preventDefault(); lastTouchEnd = n; }, false);
-        window.addEventListener('load', function() { setTimeout(() => document.getElementById('loading-crypto').classList.add('hidden'), 1000); });
-    })();
+
+        function switchWindow(windowId, btn) {
+            if (btn.classList.contains('active')) return;
+
+            if (tg && tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+
+            document.querySelectorAll('iframe').forEach(frame => frame.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            
+            document.getElementById(`win-${windowId}`).classList.add('active');
+            btn.classList.add('active');
+        }
     </script>
 </body>
 </html>
