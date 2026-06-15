@@ -139,6 +139,14 @@
                 sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
                 loading="lazy"></iframe>
 
+        <iframe id="win-converter" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
+
+        <iframe id="win-parser" 
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                loading="lazy"></iframe>
+
         <iframe id="win-module" 
                 sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
                 loading="lazy"></iframe>
@@ -155,6 +163,16 @@
             <span id="text-note">Notepad</span>
         </button>
 
+        <button id="btn-converter" class="nav-tab" onclick="switchWindow('converter', this)">
+            <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+            <span id="text-converter">Converter</span>
+        </button>
+
+        <button id="btn-parser" class="nav-tab" onclick="switchWindow('parser', this)">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <span id="text-parser">Parser</span>
+        </button>
+
         <button id="btn-module" class="nav-tab" onclick="switchWindow('module', this)">
             <svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
             <span id="text-module">Module</span>
@@ -165,7 +183,9 @@
         const APP_URLS = {
             crypto: "https://usalabama.github.io/amigocryptoterminal/",
             note:   "https://usalabama.github.io/amigo-note/",
-            module: "https://usalabama.github.io/amigocalculator/"
+            converter: "https://usalabama.github.io/amigocalculator/",
+            parser: "https://usalabama.github.io/amigoparser/",
+            module: "https://usalabama.github.io/amigo-module/"
         };
 
         let tg = null;
@@ -192,15 +212,15 @@
         }
 
         const i18n = {
-            uk: { crypto: "Термінал",  note: "Блокнот",  module: "Модуль"   },
-            ru: { crypto: "Терминал",  note: "Блокнот",  module: "Модуль"   },
-            en: { crypto: "Terminal",  note: "Notepad",  module: "Module"   },
-            es: { crypto: "Terminal",  note: "Bloc",     module: "Módulo"   },
-            de: { crypto: "Terminal",  note: "Notizblock", module: "Modul"  },
-            fr: { crypto: "Terminal",  note: "Bloc-notes", module: "Module" },
-            zh: { crypto: "终端",      note: "记事本",   module: "模块"     },
-            ja: { crypto: "ターミナル", note: "メモ帳",   module: "モジュール" },
-            ko: { crypto: "터미널",    note: "메모장",   module: "모듈"     }
+            uk: { crypto: "Термінал",  note: "Блокнот",  converter: "Конвертер", parser: "Парсер", module: "Модуль" },
+            ru: { crypto: "Терминал",  note: "Блокнот",  converter: "Конвертер", parser: "Парсер", module: "Модуль" },
+            en: { crypto: "Terminal",  note: "Notepad",  converter: "Converter", parser: "Parser", module: "Module" },
+            es: { crypto: "Terminal",  note: "Bloc",     converter: "Convertidor", parser: "Analizador", module: "Módulo" },
+            de: { crypto: "Terminal",  note: "Notizblock", converter: "Konverter", parser: "Parser", module: "Modul" },
+            fr: { crypto: "Terminal",  note: "Bloc-notes", converter: "Convertisseur", parser: "Analyseur", module: "Module" },
+            zh: { crypto: "终端",      note: "记事本",   converter: "转换器", parser: "解析器", module: "模块" },
+            ja: { crypto: "ターミナル", note: "メモ帳",   converter: "コンバーター", parser: "パーサー", module: "モジュール" },
+            ko: { crypto: "터미널",    note: "메모장",   converter: "변환기", parser: "파서", module: "모듈" }
         };
 
         const t = i18n[userLang] || i18n['en'];
@@ -210,6 +230,8 @@
 
             document.getElementById('text-crypto').innerText = t.crypto;
             document.getElementById('text-note').innerText   = t.note;
+            document.getElementById('text-converter').innerText = t.converter;
+            document.getElementById('text-parser').innerText = t.parser;
             document.getElementById('text-module').innerText = t.module;
 
             document.getElementById('win-crypto').src = APP_URLS.crypto;
@@ -219,8 +241,16 @@
             }, 500);
 
             setTimeout(() => {
-                document.getElementById('win-module').src = APP_URLS.module;
+                document.getElementById('win-converter').src = APP_URLS.converter;
             }, 1000);
+
+            setTimeout(() => {
+                document.getElementById('win-parser').src = APP_URLS.parser;
+            }, 1500);
+
+            setTimeout(() => {
+                document.getElementById('win-module').src = APP_URLS.module;
+            }, 2000);
         });
 
         function switchWindow(windowId, btn) {
