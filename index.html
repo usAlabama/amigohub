@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content">
     <meta name="theme-color" content="#0c1017">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Amigo Hub - Multi-tool Telegram Web App">
     <title>Amigo Hub</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='25' fill='%232481cc'/><text x='50%25' y='52%25' font-family='-apple-system, BlinkMacSystemFont, Arial, sans-serif' font-size='75' font-weight='bold' fill='white' dominant-baseline='central' text-anchor='middle'>A</text></svg>">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -15,10 +16,23 @@
             --nav-border: #1f242c;
             --text-muted: #576575;
             --accent: #2962ff;
+            --accent-glow: rgba(41, 98, 255, 0.3);
             
             --app-height: 100vh; 
             --safe-bottom: env(safe-area-inset-bottom, 0px);
-            --nav-height: calc(48px + var(--safe-bottom));
+            --safe-top: env(safe-area-inset-top, 0px);
+            --nav-height: calc(52px + var(--safe-bottom));
+            --transition-speed: 0.2s;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            :root {
+                --transition-speed: 0.01ms;
+            }
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
         }
 
         html, body {
@@ -37,6 +51,8 @@
             left: 0;
             overscroll-behavior: none;
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
         }
 
         .window-container {
@@ -50,23 +66,116 @@
             z-index: 1;
         }
 
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
+        .iframe-wrapper {
             position: absolute;
-            top: 0;
-            left: 0;
+            inset: 0;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.2s ease-in-out;
+            transition: opacity var(--transition-speed) ease-in-out, visibility var(--transition-speed);
             background-color: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        iframe.active {
+        .iframe-wrapper.active {
             opacity: 1;
             visibility: visible;
             z-index: 2;
+        }
+
+        .iframe-wrapper iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: var(--bg-color);
+        }
+
+        .iframe-loader {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            pointer-events: none;
+            z-index: 1;
+            transition: opacity 0.3s ease-out;
+        }
+
+        .iframe-wrapper.loaded .iframe-loader {
+            opacity: 0;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .iframe-error {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: var(--bg-color);
+            z-index: 3;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .iframe-wrapper.error .iframe-error {
+            display: flex;
+        }
+
+        .iframe-wrapper.error .iframe-loader {
+            display: none;
+        }
+
+        .error-icon {
+            width: 48px;
+            height: 48px;
+            fill: #ff5252;
+            opacity: 0.8;
+        }
+
+        .error-text {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            max-width: 240px;
+        }
+
+        .retry-btn {
+            padding: 8px 16px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .retry-btn:active {
+            transform: scale(0.95);
         }
 
         nav {
@@ -77,15 +186,26 @@
             height: var(--nav-height);
             padding-bottom: var(--safe-bottom);
             background: rgba(17, 21, 29, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border-top: 1px solid var(--nav-border);
             display: flex;
             align-items: center;
             justify-content: center;
             box-sizing: border-box;
             z-index: 10;
-            gap: 4px;
+            gap: 2px;
+        }
+
+        @supports (backdrop-filter: blur(12px)) {
+            nav {
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+        }
+
+        @supports not (backdrop-filter: blur(12px)) {
+            nav {
+                background: rgba(17, 21, 29, 0.98);
+            }
         }
 
         .nav-tab {
@@ -98,18 +218,43 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 4px;
+            gap: 3px;
             cursor: pointer;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 600;
             letter-spacing: 0.3px;
             -webkit-tap-highlight-color: transparent;
-            transition: color 0.2s, transform 0.1s;
-            max-width: 120px;
+            transition: color var(--transition-speed), transform 0.1s;
+            padding: 4px 2px;
+            position: relative;
+            outline: none;
+        }
+
+        .nav-tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%) scaleX(0);
+            width: 24px;
+            height: 2px;
+            background: var(--accent);
+            border-radius: 0 0 2px 2px;
+            transition: transform var(--transition-speed) ease-out;
+        }
+
+        .nav-tab.active::before {
+            transform: translateX(-50%) scaleX(1);
         }
 
         .nav-tab:active {
-            transform: scale(0.95);
+            transform: scale(0.93);
+        }
+
+        .nav-tab:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+            border-radius: 8px;
         }
 
         .nav-tab.active {
@@ -117,155 +262,522 @@
         }
 
         .nav-tab svg {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             fill: currentColor;
-            transition: transform 0.2s;
+            transition: transform var(--transition-speed);
+            flex-shrink: 0;
         }
 
         .nav-tab.active svg {
-            transform: translateY(-2px);
+            transform: translateY(-1px);
+            filter: drop-shadow(0 0 6px var(--accent-glow));
+        }
+
+        .nav-tab span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        @media (min-width: 600px) {
+            nav {
+                max-width: 480px;
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+                border-radius: 16px 16px 0 0;
+                border-left: 1px solid var(--nav-border);
+                border-right: 1px solid var(--nav-border);
+            }
+            .nav-tab {
+                font-size: 0.7rem;
+            }
+            .nav-tab svg {
+                width: 24px;
+                height: 24px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="window-container">
-        <iframe id="win-crypto" class="active" 
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
-                loading="lazy"></iframe>
+    <div class="window-container" id="windowContainer">
+        <div class="iframe-wrapper active" id="wrap-crypto" data-window="crypto">
+            <div class="iframe-loader">
+                <div class="spinner"></div>
+                <div class="loader-text">Loading Terminal...</div>
+            </div>
+            <div class="iframe-error">
+                <svg class="error-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <div class="error-text">Failed to load Terminal. Check your connection.</div>
+                <button class="retry-btn" data-retry="crypto">Retry</button>
+            </div>
+            <iframe id="win-crypto" 
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                    loading="eager"
+                    referrerpolicy="no-referrer"></iframe>
+        </div>
         
-        <iframe id="win-note" 
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
-                loading="lazy"></iframe>
+        <div class="iframe-wrapper" id="wrap-note" data-window="note">
+            <div class="iframe-loader">
+                <div class="spinner"></div>
+                <div class="loader-text">Loading Notepad...</div>
+            </div>
+            <div class="iframe-error">
+                <svg class="error-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <div class="error-text">Failed to load Notepad. Check your connection.</div>
+                <button class="retry-btn" data-retry="note">Retry</button>
+            </div>
+            <iframe id="win-note" 
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                    loading="lazy"
+                    referrerpolicy="no-referrer"></iframe>
+        </div>
 
-        <iframe id="win-converter" 
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
-                loading="lazy"></iframe>
+        <div class="iframe-wrapper" id="wrap-converter" data-window="converter">
+            <div class="iframe-loader">
+                <div class="spinner"></div>
+                <div class="loader-text">Loading Converter...</div>
+            </div>
+            <div class="iframe-error">
+                <svg class="error-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <div class="error-text">Failed to load Converter. Check your connection.</div>
+                <button class="retry-btn" data-retry="converter">Retry</button>
+            </div>
+            <iframe id="win-converter" 
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                    loading="lazy"
+                    referrerpolicy="no-referrer"></iframe>
+        </div>
 
-        <iframe id="win-parser" 
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
-                loading="lazy"></iframe>
+        <div class="iframe-wrapper" id="wrap-parser" data-window="parser">
+            <div class="iframe-loader">
+                <div class="spinner"></div>
+                <div class="loader-text">Loading Parser...</div>
+            </div>
+            <div class="iframe-error">
+                <svg class="error-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <div class="error-text">Failed to load Parser. Check your connection.</div>
+                <button class="retry-btn" data-retry="parser">Retry</button>
+            </div>
+            <iframe id="win-parser" 
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                    loading="lazy"
+                    referrerpolicy="no-referrer"></iframe>
+        </div>
 
-        <iframe id="win-module" 
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
-                loading="lazy"></iframe>
+        <div class="iframe-wrapper" id="wrap-module" data-window="module">
+            <div class="iframe-loader">
+                <div class="spinner"></div>
+                <div class="loader-text">Loading Module...</div>
+            </div>
+            <div class="iframe-error">
+                <svg class="error-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <div class="error-text">Failed to load Module. Check your connection.</div>
+                <button class="retry-btn" data-retry="module">Retry</button>
+            </div>
+            <iframe id="win-module" 
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms" 
+                    loading="lazy"
+                    referrerpolicy="no-referrer"></iframe>
+        </div>
     </div>
 
-    <nav>
-        <button id="btn-crypto" class="nav-tab active" onclick="switchWindow('crypto', this)">
-            <svg viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.09-4-4L3 15.17l1.5 1.32z"/></svg>
+    <nav role="tablist" aria-label="Main navigation">
+        <button id="btn-crypto" class="nav-tab active" role="tab" aria-selected="true" aria-controls="wrap-crypto" data-window="crypto">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.09-4-4L3 15.17l1.5 1.32z"/></svg>
             <span id="text-crypto">Terminal</span>
         </button>
 
-        <button id="btn-note" class="nav-tab" onclick="switchWindow('note', this)">
-            <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        <button id="btn-note" class="nav-tab" role="tab" aria-selected="false" aria-controls="wrap-note" data-window="note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
             <span id="text-note">Notepad</span>
         </button>
 
-        <button id="btn-converter" class="nav-tab" onclick="switchWindow('converter', this)">
-            <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+        <button id="btn-converter" class="nav-tab" role="tab" aria-selected="false" aria-controls="wrap-converter" data-window="converter">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
             <span id="text-converter">Converter</span>
         </button>
 
-        <button id="btn-parser" class="nav-tab" onclick="switchWindow('parser', this)">
-            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        <button id="btn-parser" class="nav-tab" role="tab" aria-selected="false" aria-controls="wrap-parser" data-window="parser">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
             <span id="text-parser">Parser</span>
         </button>
 
-        <button id="btn-module" class="nav-tab" onclick="switchWindow('module', this)">
-            <svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
+        <button id="btn-module" class="nav-tab" role="tab" aria-selected="false" aria-controls="wrap-module" data-window="module">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
             <span id="text-module">Module</span>
         </button>
     </nav>
 
     <script>
-        const APP_URLS = {
-            crypto: "https://usalabama.github.io/amigocryptoterminal/",
-            note:   "https://usalabama.github.io/amigo-note/",
-            converter: "https://usalabama.github.io/amigocalculator/",
-            parser: "https://usalabama.github.io/amigoparser/",
-            module: "https://usalabama.github.io/amigo-module/"
-        };
+    (function() {
+        'use strict';
 
-        let tg = null;
-        let userLang = 'en';
-
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            tg.setHeaderColor('#0c1017');
-            tg.setBackgroundColor('#0c1017');
-            if (tg.disableVerticalSwipes) tg.disableVerticalSwipes(); 
-            
-            if (tg.initDataUnsafe?.user?.language_code) {
-                userLang = tg.initDataUnsafe.user.language_code.toLowerCase();
-            }
-        }
-
-        function freezeAppLayout() {
-            setTimeout(() => {
-                const fixedHeight = window.innerHeight;
-                document.documentElement.style.setProperty('--app-height', `${fixedHeight}px`);
-            }, 300);
-        }
-
-        const i18n = {
-            uk: { crypto: "Термінал",  note: "Блокнот",  converter: "Конвертер", parser: "Парсер", module: "Модуль" },
-            ru: { crypto: "Терминал",  note: "Блокнот",  converter: "Конвертер", parser: "Парсер", module: "Модуль" },
-            en: { crypto: "Terminal",  note: "Notepad",  converter: "Converter", parser: "Parser", module: "Module" },
-            es: { crypto: "Terminal",  note: "Bloc",     converter: "Convertidor", parser: "Analizador", module: "Módulo" },
-            de: { crypto: "Terminal",  note: "Notizblock", converter: "Konverter", parser: "Parser", module: "Modul" },
-            fr: { crypto: "Terminal",  note: "Bloc-notes", converter: "Convertisseur", parser: "Analyseur", module: "Module" },
-            zh: { crypto: "终端",      note: "记事本",   converter: "转换器", parser: "解析器", module: "模块" },
-            ja: { crypto: "ターミナル", note: "メモ帳",   converter: "コンバーター", parser: "パーサー", module: "モジュール" },
-            ko: { crypto: "터미널",    note: "메모장",   converter: "변환기", parser: "파서", module: "모듈" }
-        };
-
-        const t = i18n[userLang] || i18n['en'];
-
-        window.addEventListener('DOMContentLoaded', () => {
-            freezeAppLayout();
-
-            document.getElementById('text-crypto').innerText = t.crypto;
-            document.getElementById('text-note').innerText   = t.note;
-            document.getElementById('text-converter').innerText = t.converter;
-            document.getElementById('text-parser').innerText = t.parser;
-            document.getElementById('text-module').innerText = t.module;
-
-            document.getElementById('win-crypto').src = APP_URLS.crypto;
-
-            setTimeout(() => {
-                document.getElementById('win-note').src = APP_URLS.note;
-            }, 500);
-
-            setTimeout(() => {
-                document.getElementById('win-converter').src = APP_URLS.converter;
-            }, 1000);
-
-            setTimeout(() => {
-                document.getElementById('win-parser').src = APP_URLS.parser;
-            }, 1500);
-
-            setTimeout(() => {
-                document.getElementById('win-module').src = APP_URLS.module;
-            }, 2000);
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const CONFIG = Object.freeze({
+            APP_URLS: {
+                crypto:    "https://usalabama.github.io/amigocryptoterminal/",
+                note:      "https://usalabama.github.io/amigo-note/",
+                converter: "https://usalabama.github.io/amigocalculator/",
+                parser:    "https://usalabama.github.io/amigoparser/",
+                module:    "https://usalabama.github.io/amigo-module/"
+            },
+            LOAD_QUEUE_DELAY: 400,
+            VIEWPORT_DEBOUNCE: 150,
+            THEME_COLOR: '#0c1017',
+            DEFAULT_LANG: 'en'
         });
 
-        function switchWindow(windowId, btn) {
-            if (btn.classList.contains('active')) return;
+        const I18N = Object.freeze({
+            uk: { crypto: "Термінал",  note: "Блокнот",  converter: "Конвертер", parser: "Парсер", module: "Модуль", loading: "Завантаження", error: "Помилка завантаження", retry: "Повторити" },
+            ru: { crypto: "Терминал",  note: "Блокнот",  converter: "Конвертер", parser: "Парсер", module: "Модуль", loading: "Загрузка", error: "Ошибка загрузки", retry: "Повторить" },
+            en: { crypto: "Terminal",  note: "Notepad",  converter: "Converter", parser: "Parser", module: "Module", loading: "Loading", error: "Failed to load", retry: "Retry" },
+            es: { crypto: "Terminal",  note: "Bloc",     converter: "Convertidor", parser: "Analizador", module: "Módulo", loading: "Cargando", error: "Error al cargar", retry: "Reintentar" },
+            de: { crypto: "Terminal",  note: "Notizblock", converter: "Konverter", parser: "Parser", module: "Modul", loading: "Laden", error: "Ladefehler", retry: "Wiederholen" },
+            fr: { crypto: "Terminal",  note: "Bloc-notes", converter: "Convertisseur", parser: "Analyseur", module: "Module", loading: "Chargement", error: "Échec du chargement", retry: "Réessayer" },
+            zh: { crypto: "终端",      note: "记事本",   converter: "转换器", parser: "解析器", module: "模块", loading: "加载中", error: "加载失败", retry: "重试" },
+            ja: { crypto: "ターミナル", note: "メモ帳",   converter: "コンバーター", parser: "パーサー", module: "モジュール", loading: "読み込み中", error: "読み込み失敗", retry: "再試行" },
+            ko: { crypto: "터미널",    note: "메모장",   converter: "변환기", parser: "파서", module: "모듈", loading: "로딩 중", error: "로딩 실패", retry: "재시도" }
+        });
 
-            if (tg && tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
+        // ============================================
+        // STATE
+        // ============================================
+        const state = {
+            tg: null,
+            userLang: CONFIG.DEFAULT_LANG,
+            activeWindow: 'crypto',
+            loadedFrames: new Set(),
+            failedFrames: new Set(),
+            cache: {}
+        };
 
-            document.querySelectorAll('iframe').forEach(frame => frame.classList.remove('active'));
-            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        // ============================================
+        // UTILITIES
+        // ============================================
+        const utils = {
+            $(selector) {
+                if (!state.cache[selector]) {
+                    state.cache[selector] = document.querySelector(selector);
+                }
+                return state.cache[selector];
+            },
             
-            document.getElementById(`win-${windowId}`).classList.add('active');
-            btn.classList.add('active');
+            $$(selector) {
+                const key = `list_${selector}`;
+                if (!state.cache[key]) {
+                    state.cache[key] = Array.from(document.querySelectorAll(selector));
+                }
+                return state.cache[key];
+            },
+
+            debounce(fn, delay) {
+                let timer;
+                return function(...args) {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => fn.apply(this, args), delay);
+                };
+            },
+
+            supportsBackdrop() {
+                return CSS.supports('backdrop-filter', 'blur(1px)') || 
+                       CSS.supports('-webkit-backdrop-filter', 'blur(1px)');
+            },
+
+            requestIdle(cb) {
+                if ('requestIdleCallback' in window) {
+                    window.requestIdleCallback(cb, { timeout: 1000 });
+                } else {
+                    setTimeout(cb, 50);
+                }
+            },
+
+            haptic(type = 'light') {
+                if (state.tg?.HapticFeedback) {
+                    try {
+                        state.tg.HapticFeedback.impactOccurred(type);
+                    } catch (e) { /* silent */ }
+                }
+            }
+        };
+
+        // ============================================
+        // TELEGRAM INIT + LANGUAGE DETECTION
+        // ============================================
+        function initTelegram() {
+            if (window.Telegram?.WebApp) {
+                state.tg = window.Telegram.WebApp;
+                try {
+                    state.tg.ready();
+                    state.tg.expand();
+                    
+                    if (state.tg.setHeaderColor) {
+                        state.tg.setHeaderColor(CONFIG.THEME_COLOR);
+                    }
+                    if (state.tg.setBackgroundColor) {
+                        state.tg.setBackgroundColor(CONFIG.THEME_COLOR);
+                    }
+                    if (typeof state.tg.disableVerticalSwipes === 'function') {
+                        state.tg.disableVerticalSwipes();
+                    }
+                    
+                    const langCode = state.tg.initDataUnsafe?.user?.language_code;
+                    if (langCode) {
+                        state.userLang = langCode.toLowerCase().slice(0, 2);
+                    }
+                } catch (e) {
+                    console.warn('[AmigoHub] Telegram init error:', e);
+                }
+            }
+            
+            // Fallback: detect language from browser settings (for web/desktop)
+            if (!state.userLang || state.userLang === CONFIG.DEFAULT_LANG) {
+                const browserLang = navigator.language || navigator.userLanguage || '';
+                if (browserLang) {
+                    state.userLang = browserLang.toLowerCase().slice(0, 2);
+                }
+            }
         }
+
+        // ============================================
+        // VIEWPORT MANAGEMENT
+        // ============================================
+        function updateViewportHeight() {
+            let height;
+            
+            if (window.visualViewport) {
+                height = window.visualViewport.height;
+            } else {
+                height = window.innerHeight;
+            }
+            
+            if (state.tg && window.screen) {
+                const screenHeight = window.screen.height;
+                if (height > screenHeight * 0.95) {
+                    height = Math.min(height, screenHeight);
+                }
+            }
+            
+            document.documentElement.style.setProperty('--app-height', `${height}px`);
+        }
+
+        function initViewportHandlers() {
+            updateViewportHeight();
+            
+            const debouncedUpdate = utils.debounce(updateViewportHeight, CONFIG.VIEWPORT_DEBOUNCE);
+            
+            window.addEventListener('resize', debouncedUpdate, { passive: true });
+            window.addEventListener('orientationchange', () => {
+                setTimeout(updateViewportHeight, 100);
+                setTimeout(updateViewportHeight, 500);
+            }, { passive: true });
+            
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', debouncedUpdate, { passive: true });
+            }
+            
+            document.addEventListener('DOMContentLoaded', updateViewportHeight);
+            window.addEventListener('load', updateViewportHeight);
+        }
+
+        // ============================================
+        // I18N
+        // ============================================
+        function applyTranslations() {
+            const t = I18N[state.userLang] || I18N[CONFIG.DEFAULT_LANG];
+            const tabs = ['crypto', 'note', 'converter', 'parser', 'module'];
+            
+            tabs.forEach(tab => {
+                const el = utils.$(`#text-${tab}`);
+                if (el && t[tab]) {
+                    el.textContent = t[tab];
+                }
+            });
+        }
+
+        // ============================================
+        // IFRAME LOADING
+        // ============================================
+        function loadIframe(windowId) {
+            return new Promise((resolve, reject) => {
+                const iframe = utils.$(`#win-${windowId}`);
+                const wrapper = utils.$(`#wrap-${windowId}`);
+                
+                if (!iframe || !wrapper) {
+                    reject(new Error(`Frame ${windowId} not found`));
+                    return;
+                }
+                
+                if (state.loadedFrames.has(windowId)) {
+                    resolve();
+                    return;
+                }
+                
+                const url = CONFIG.APP_URLS[windowId];
+                if (!url) {
+                    reject(new Error(`No URL for ${windowId}`));
+                    return;
+                }
+                
+                const onLoad = () => {
+                    iframe.removeEventListener('load', onLoad);
+                    iframe.removeEventListener('error', onError);
+                    wrapper.classList.add('loaded');
+                    wrapper.classList.remove('error');
+                    state.loadedFrames.add(windowId);
+                    state.failedFrames.delete(windowId);
+                    resolve();
+                };
+                
+                const onError = () => {
+                    iframe.removeEventListener('load', onLoad);
+                    iframe.removeEventListener('error', onError);
+                    wrapper.classList.add('error');
+                    state.failedFrames.add(windowId);
+                    reject(new Error(`Failed to load ${windowId}`));
+                };
+                
+                iframe.addEventListener('load', onLoad, { once: true });
+                iframe.addEventListener('error', onError, { once: true });
+                
+                iframe.src = url;
+            });
+        }
+
+        function initLoadQueue() {
+            const windows = ['crypto', 'note', 'converter', 'parser', 'module'];
+            
+            loadIframe(windows[0]).catch(() => {});
+            
+            windows.slice(1).forEach((winId, idx) => {
+                setTimeout(() => {
+                    utils.requestIdle(() => {
+                        loadIframe(winId).catch(() => {});
+                    });
+                }, CONFIG.LOAD_QUEUE_DELAY * (idx + 1));
+            });
+        }
+
+        function retryLoad(windowId) {
+            const iframe = utils.$(`#win-${windowId}`);
+            const wrapper = utils.$(`#wrap-${windowId}`);
+            
+            if (!iframe || !wrapper) return;
+            
+            wrapper.classList.remove('error', 'loaded');
+            state.failedFrames.delete(windowId);
+            state.loadedFrames.delete(windowId);
+            
+            iframe.src = '';
+            setTimeout(() => loadIframe(windowId).catch(() => {}), 50);
+        }
+
+        // ============================================
+        // NAVIGATION
+        // ============================================
+        function switchWindow(windowId) {
+            if (state.activeWindow === windowId) return;
+            if (!CONFIG.APP_URLS[windowId]) return;
+            
+            utils.haptic('light');
+            
+            const prevWrapper = utils.$(`#wrap-${state.activeWindow}`);
+            const nextWrapper = utils.$(`#wrap-${windowId}`);
+            const prevBtn = utils.$(`[data-window="${state.activeWindow}"].nav-tab`);
+            const nextBtn = utils.$(`[data-window="${windowId}"].nav-tab`);
+            
+            if (prevWrapper) prevWrapper.classList.remove('active');
+            if (nextWrapper) nextWrapper.classList.add('active');
+            
+            if (prevBtn) {
+                prevBtn.classList.remove('active');
+                prevBtn.setAttribute('aria-selected', 'false');
+            }
+            if (nextBtn) {
+                nextBtn.classList.add('active');
+                nextBtn.setAttribute('aria-selected', 'true');
+            }
+            
+            state.activeWindow = windowId;
+            
+            if (!state.loadedFrames.has(windowId) && !state.failedFrames.has(windowId)) {
+                loadIframe(windowId).catch(() => {});
+            }
+        }
+
+        function initNavigation() {
+            document.addEventListener('click', (e) => {
+                const tab = e.target.closest('.nav-tab[data-window]');
+                if (tab) {
+                    e.preventDefault();
+                    switchWindow(tab.dataset.window);
+                    return;
+                }
+                
+                const retryBtn = e.target.closest('.retry-btn[data-retry]');
+                if (retryBtn) {
+                    e.preventDefault();
+                    utils.haptic('medium');
+                    retryLoad(retryBtn.dataset.retry);
+                }
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.target.closest('.nav-tab')) {
+                    const tabs = utils.$$('.nav-tab');
+                    const currentIdx = tabs.indexOf(e.target);
+                    
+                    if (e.key === 'ArrowRight' && currentIdx < tabs.length - 1) {
+                        tabs[currentIdx + 1].focus();
+                    } else if (e.key === 'ArrowLeft' && currentIdx > 0) {
+                        tabs[currentIdx - 1].focus();
+                    } else if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        switchWindow(e.target.dataset.window);
+                    }
+                }
+            });
+        }
+
+        // ============================================
+        // VISIBILITY API
+        // ============================================
+        function initVisibilityHandler() {
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    try {
+                        const activeIframe = utils.$(`#win-${state.activeWindow}`);
+                        if (activeIframe?.contentWindow) {
+                            activeIframe.contentWindow.postMessage({ type: 'visibility', hidden: true }, '*');
+                        }
+                    } catch (e) { /* cross-origin */ }
+                }
+            });
+        }
+
+        // ============================================
+        // BOOTSTRAP
+        // ============================================
+        function init() {
+            initTelegram();
+            initViewportHandlers();
+            applyTranslations();
+            initNavigation();
+            initVisibilityHandler();
+            initLoadQueue();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
     </script>
 </body>
 </html>
